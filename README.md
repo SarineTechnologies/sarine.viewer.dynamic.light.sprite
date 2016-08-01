@@ -1,0 +1,1 @@
+# sarine.viewer.dynamic.light.sprite
