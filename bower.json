@@ -1,6 +1,6 @@
 {
   "name": "sarine.viewer.dynamic.light.sprite",
-  "version": "0.37.0",
+  "version": "0.1.0",
   "main": "dist/sarine.viewer.dynamic.light.sprite.js",
   "ignore": [
     ".git",
@@ -9,7 +9,8 @@
     "Gruntfile.js"
   ],
   "dependencies": {
-    "sarine.viewer": "https://github.com/SarineTechnologies/sarine.viewer.git#v0.1.0"
+    "sarine.viewer": "https://github.com/SarineTechnologies/sarine.viewer.git#v0.3.0",
+    "sarine.viewer.dynamic": "https://github.com/SarineTechnologies/sarine.viewer.dynamic.git#v0.2.0"
   },
   "exportsOverride": {
         "sarine.*": {        
