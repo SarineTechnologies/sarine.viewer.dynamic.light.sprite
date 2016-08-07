@@ -1,5 +1,5 @@
 ###!
-sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33 PM 
+sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 3:56:19 PM 
  The source code, name, and look and feel of the software are Copyright © 2015 Sarine Technologies Ltd. All Rights Reserved. You may not duplicate, copy, reuse, sell or otherwise exploit any portion of the code, content or visual design elements without express written permission from Sarine Technologies Ltd. The terms and conditions of the sarine.com website (http://sarine.com/terms-and-conditions/) apply to the access and use of this software.
 ###
 
@@ -54,8 +54,21 @@ class LightSprite extends Viewer.Dynamic
 		@ctx = @canvas[0].getContext('2d')
 		@element.append(@canvas)		
 
-	first_init : () ->
-		defer = @first_init_defer 
+	first_init : () ->		
+		defer = @first_init_defer
+		_t = @
+		@loadImage(@src + @firstImagePath).then((img)->
+			if img.src.indexOf('data:image') != -1 || img.src.indexOf('no_stone') != -1
+				_t.isAvailble = false
+				_t.canvas.attr {'class' : 'no_stone'}
+			_t.canvas.attr {'width':img.width, 'height': img.height}
+			_t.ctx.drawImage img , 0 , 0 			
+			defer.resolve(_t) 
+		)
+		defer
+
+	full_init : ()->
+		defer = @full_init_defer
 		_t = @
 		$.getJSON @src + @jsonFileName , (data)->
 			if !data.FPS then data.FPS = 15
@@ -71,51 +84,17 @@ class LightSprite extends Viewer.Dynamic
 				_t.play()
 		.then ()->
 			_t.isSprite = true
-			_t.first_init_sprite()	
+			_t.downloadSprite(defer).then(()-> 
+				if _t.autoPlay 
+					_t.play true
+				true
+			)	
 		.fail =>			
 			_t.isSprite = false
-			_t.first_init_images()
-		defer	
+			if _t.isAvailble then _t.loadParts().then(defer.resolve) else defer.resolve
 
-	full_init : ()->
-		if @isSprite then @full_init_sprite() else @full_init_images()
-
-	first_init_images : ()->
-		defer = @first_init_defer
-		defer.notify(@id + " : start load first image")
-		_t = @
-		@loadImage(@src + @firstImagePath).then((img)->
-			if img.src.indexOf('data:image') != -1 || img.src.indexOf('no_stone') != -1
-				_t.isAvailble = false
-				_t.canvas.attr {'class' : 'no_stone'}
-			_t.canvas.attr {'width':img.width, 'height': img.height}
-			_t.ctx.drawImage img , 0 , 0 			
-			defer.resolve(_t) 
-		)
 		defer
-	first_init_sprite : ()->
-		defer = @first_init_defer
-		_t = @
-		_t.loadImage(_t.src + _t.firstImagePath).then (img)-> 
-				_t.ctx.drawImage(img, 0, 0, _t.metadata.ImageSize, _t.metadata.ImageSize)
-				_t.imageIndex = 0
-				defer.resolve(_t)
-		defer		
-
-	full_init_images : ()->
-		defer = @full_init_defer
-		if @isAvailble then @loadParts().then(defer.resolve) else defer.resolve
-		defer
-
-	full_init_sprite : ()->
-		defer = @full_init_defer
-		_t = @
-		@downloadSprite(defer).then(()-> 
-			if _t.autoPlay 
-				_t.play true
-			true
-			)
-		defer
+			
 	downloadSprite : (mainDefer)->
 		_t = @
 		@loadImage(@src + @spritesPath + (if !@oneSprite then @sprites.length else "") + @imageType ).then (img)->
