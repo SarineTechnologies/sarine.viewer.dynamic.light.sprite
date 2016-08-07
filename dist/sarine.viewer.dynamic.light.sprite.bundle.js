@@ -1,6 +1,6 @@
 
 /*!
-sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:53 PM 
+sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:32 PM 
  The source code, name, and look and feel of the software are Copyright © 2015 Sarine Technologies Ltd. All Rights Reserved. You may not duplicate, copy, reuse, sell or otherwise exploit any portion of the code, content or visual design elements without express written permission from Sarine Technologies Ltd. The terms and conditions of the sarine.com website (http://sarine.com/terms-and-conditions/) apply to the access and use of this software.
  */
 
@@ -108,9 +108,11 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
   })(Viewer);
 
   LightSprite = (function(_super) {
-    var allDeferreds, amountOfImages, counter, downloadImagesArr, imageIndex, imagesArr, isEven, setSpeed, sliceCount, speed;
+    var SprtieImg, allDeferreds, amountOfImages, counter, downloadImagesArr, imageIndex, imagesArr, isEven, isSprite, setSpeed, sliceCount, speed;
 
     __extends(LightSprite, _super);
+
+    isSprite = false;
 
     amountOfImages = 48;
 
@@ -135,7 +137,18 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
     function LightSprite(options) {
       var index, _i;
       LightSprite.__super__.constructor.call(this, options);
-      this.sliceDownload = options.sliceDownload;
+      this.sliceDownload = options.sliceDownload, this.jsonFileName = options.jsonFileName, this.firstImagePath = options.firstImagePath, this.spritesPath = options.spritesPath, this.oneSprite = options.oneSprite, this.imageType = options.imageType;
+      this.imageType = this.imageType || '.png';
+      this.metadata = void 0;
+      this.sprites = [];
+      this.currentSprite = 0;
+      this.playing = false;
+      this.delta = 1;
+      this.imageIndex = -1;
+      this.imagesDownload = 0;
+      this.imagegap = 0;
+      this.playOrder = {};
+      this.isAvailble = true;
       this.sliceDownload = this.sliceDownload | 3;
       this.imagesArr = {};
       this.downloadImagesArr = {};
@@ -146,6 +159,18 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
       }
     }
 
+    SprtieImg = (function() {
+      function SprtieImg(img, size) {
+        this.column = img.width / size;
+        this.rows = img.height / size;
+        this.image = img;
+        this.totalImage = this.column * this.rows;
+      }
+
+      return SprtieImg;
+
+    })();
+
     LightSprite.prototype.convertElement = function() {
       this.canvas = $("<canvas>");
       this.ctx = this.canvas[0].getContext('2d');
@@ -155,9 +180,55 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
     LightSprite.prototype.first_init = function() {
       var defer, _t;
       defer = this.first_init_defer;
+      _t = this;
+      $.getJSON(this.src + this.jsonFileName, function(data) {
+        if (!data.FPS) {
+          data.FPS = 15;
+        }
+        _t.metadata = data;
+        _t.canvas.attr({
+          "width": data.ImageSize,
+          "height": data.ImageSize
+        });
+        if (data.background !== '') {
+          _t.canvas.parent().css("background", "#" + data.background);
+        }
+        _t.delay = 1000 / data.FPS;
+        if (_t.playing) {
+          return _t.play();
+        }
+      }).then(function() {
+        isSprite = true;
+        return _t.first_init_sprite();
+      }).fail((function(_this) {
+        return function() {
+          isSprite = false;
+          return _t.first_init_images();
+        };
+      })(this));
+      return defer;
+    };
+
+    LightSprite.prototype.full_init = function() {
+      if (isSprite) {
+        return this.full_init_sprite();
+      } else {
+        return this.full_init_images();
+      }
+    };
+
+    LightSprite.prototype.first_init_images = function() {
+      var defer, _t;
+      defer = this.first_init_defer;
       defer.notify(this.id + " : start load first image");
       _t = this;
       this.loadImage(this.src + "00.png").then(function(img) {
+        if (img.src.indexOf('data:image') !== -1 || img.src.indexOf('no_stone') !== -1) {
+          _t.isAvailble = false;
+          _t.canvas.attr({
+            'class': 'no_stone'
+          });
+        }
         _t.canvas.attr({
           'width': img.width,
           'height': img.height
@@ -166,6 +237,101 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
         return defer.resolve(_t);
       });
       return defer;
+    };
+
+    LightSprite.prototype.first_init_sprite = function() {
+      var defer, _t;
+      defer = this.first_init_defer;
+      _t = this;
+      _t.loadImage(_t.src + _t.firstImagePath).then(function(img) {
+        _t.ctx.drawImage(img, 0, 0, _t.metadata.ImageSize, _t.metadata.ImageSize);
+        _t.imageIndex = 0;
+        return defer.resolve(_t);
+      });
+      return defer;
+    };
+
+    LightSprite.prototype.full_init_images = function() {
+      var defer;
+      defer = this.full_init_defer;
+      if (this.isAvailble) {
+        this.loadParts().then(defer.resolve);
+      } else {
+        defer.resolve;
+      }
+      return defer;
+    };
+
+    LightSprite.prototype.full_init_sprite = function() {
+      var defer, _t;
+      defer = this.full_init_defer;
+      _t = this;
+      this.downloadSprite(defer).then(function() {
+        if (_t.autoPlay) {
+          _t.play(true);
+        }
+        return true;
+      });
+      return defer;
+    };
+
+    LightSprite.prototype.downloadSprite = function(mainDefer) {
+      var _t;
+      _t = this;
+      return this.loadImage(this.src + this.spritesPath + (!this.oneSprite ? this.sprites.length : "") + this.imageType).then(function(img) {
+        var sprite;
+        sprite = new SprtieImg(img, _t.metadata.ImageSize);
+        _t.imagesDownload += sprite.column * sprite.rows;
+        _t.sprites.push(sprite);
+        if (_t.imagesDownload >= _t.metadata.TotalImageCount) {
+          mainDefer.resolve(_t);
+        } else {
+          _t.downloadSprite(mainDefer);
+        }
+        return true;
+      });
+    };
+
+    LightSprite.prototype.nextImage = function() {
+      var col, imageInSprite, imgInfo, playingSprite, row, totalLessOne;
+      if (this.metadata && this.sprites.length > 0) {
+        if (this.imageIndex + this.delta === this.metadata.TotalImageCount || this.imageIndex + this.delta === this.imagesDownload) {
+          this.delta = -1;
+        }
+        if (this.imageIndex + this.delta === -1) {
+          this.delta = 1;
+        }
+        this.imageIndex += this.delta;
+        playingSprite = this.sprites[this.currentSprite];
+        if ((this.imageIndex - this.imagegap) % playingSprite.totalImage === 0 && this.imageIndex > 0) {
+          if (this.delta === 1) {
+            playingSprite = this.sprites[++this.currentSprite];
+          } else if (this.delta === -1) {
+            playingSprite = this.sprites[--this.currentSprite];
+          }
+          this.imagegap = this.imageIndex;
+        }
+        if (!this.backOnEnd && this.sprites.length === 1) {
+          totalLessOne = this.sprites[this.currentSprite].totalImage - 1;
+          imageInSprite = this.imageIndex - this.imagegap + (this.delta === -1 ? totalLessOne : 0);
+        } else {
+          imageInSprite = this.imageIndex - this.imagegap + (this.delta === -1 ? this.sprites[this.currentSprite].totalImage : 0);
+        }
+        col = parseInt(-1 * parseInt(imageInSprite % playingSprite.column) * this.metadata.ImageSize);
+        row = parseInt(-1 * parseInt(imageInSprite / playingSprite.rows) * this.metadata.ImageSize);
+        if (!this.playOrder[this.imageIndex]) {
+          this.playOrder[this.imageIndex] = {
+            spriteNumber: this.currentSprite,
+            col: col,
+            row: row
+          };
+        }
+        imgInfo = this.playOrder[this.imageIndex];
+        if (this.imageType === '.png') {
+          this.ctx.clearRect(0, 0, this.metadata.ImageSize, this.metadata.ImageSize);
+        }
+        return this.ctx.drawImage(this.sprites[imgInfo.spriteNumber].image, imgInfo.col, imgInfo.row);
+      }
     };
 
     LightSprite.prototype.loadParts = function(gap, defer) {
@@ -216,14 +382,6 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Tuesday, August 2nd, 2016, 5:01:5
         }
         return _t.delay = (_t.sliceDownload / gap) * setSpeed;
       });
-      return defer;
-    };
-
-    LightSprite.prototype.full_init = function() {
-      var defer;
-      defer = this.full_init_defer;
-      defer.notify(this.id + " : start load all images");
-      this.loadParts().then(defer.resolve);
       return defer;
     };
 
