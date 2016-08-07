@@ -1,6 +1,6 @@
 
 /*!
-sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:32 PM 
+sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33 PM 
  The source code, name, and look and feel of the software are Copyright © 2015 Sarine Technologies Ltd. All Rights Reserved. You may not duplicate, copy, reuse, sell or otherwise exploit any portion of the code, content or visual design elements without express written permission from Sarine Technologies Ltd. The terms and conditions of the sarine.com website (http://sarine.com/terms-and-conditions/) apply to the access and use of this software.
  */
 
@@ -108,11 +108,9 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
   })(Viewer);
 
   LightSprite = (function(_super) {
-    var SprtieImg, allDeferreds, amountOfImages, counter, downloadImagesArr, imageIndex, imagesArr, isEven, isSprite, setSpeed, sliceCount, speed;
+    var SprtieImg, allDeferreds, amountOfImages, counter, downloadImagesArr, imageIndex, imagesArr, isEven, setSpeed, sliceCount, speed;
 
     __extends(LightSprite, _super);
-
-    isSprite = false;
 
     amountOfImages = 48;
 
@@ -138,6 +136,7 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
       var index, _i;
       LightSprite.__super__.constructor.call(this, options);
       this.sliceDownload = options.sliceDownload, this.jsonFileName = options.jsonFileName, this.firstImagePath = options.firstImagePath, this.spritesPath = options.spritesPath, this.oneSprite = options.oneSprite, this.imageType = options.imageType;
+      this.isSprite = false;
       this.imageType = this.imageType || '.png';
       this.metadata = void 0;
       this.sprites = [];
@@ -198,11 +197,11 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
           return _t.play();
         }
       }).then(function() {
-        isSprite = true;
+        _t.isSprite = true;
         return _t.first_init_sprite();
       }).fail((function(_this) {
         return function() {
-          isSprite = false;
+          _t.isSprite = false;
           return _t.first_init_images();
         };
       })(this));
@@ -210,7 +209,7 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
     };
 
     LightSprite.prototype.full_init = function() {
-      if (isSprite) {
+      if (this.isSprite) {
         return this.full_init_sprite();
       } else {
         return this.full_init_images();
@@ -222,7 +221,7 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
       defer = this.first_init_defer;
       defer.notify(this.id + " : start load first image");
       _t = this;
-      this.loadImage(this.src + "00.png").then(function(img) {
+      this.loadImage(this.src + this.firstImagePath).then(function(img) {
         if (img.src.indexOf('data:image') !== -1 || img.src.indexOf('no_stone') !== -1) {
           _t.isAvailble = false;
           _t.canvas.attr({
@@ -292,48 +291,6 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
       });
     };
 
-    LightSprite.prototype.nextImage = function() {
-      var col, imageInSprite, imgInfo, playingSprite, row, totalLessOne;
-      if (this.metadata && this.sprites.length > 0) {
-        if (this.imageIndex + this.delta === this.metadata.TotalImageCount || this.imageIndex + this.delta === this.imagesDownload) {
-          this.delta = -1;
-        }
-        if (this.imageIndex + this.delta === -1) {
-          this.delta = 1;
-        }
-        this.imageIndex += this.delta;
-        playingSprite = this.sprites[this.currentSprite];
-        if ((this.imageIndex - this.imagegap) % playingSprite.totalImage === 0 && this.imageIndex > 0) {
-          if (this.delta === 1) {
-            playingSprite = this.sprites[++this.currentSprite];
-          } else if (this.delta === -1) {
-            playingSprite = this.sprites[--this.currentSprite];
-          }
-          this.imagegap = this.imageIndex;
-        }
-        if (!this.backOnEnd && this.sprites.length === 1) {
-          totalLessOne = this.sprites[this.currentSprite].totalImage - 1;
-          imageInSprite = this.imageIndex - this.imagegap + (this.delta === -1 ? totalLessOne : 0);
-        } else {
-          imageInSprite = this.imageIndex - this.imagegap + (this.delta === -1 ? this.sprites[this.currentSprite].totalImage : 0);
-        }
-        col = parseInt(-1 * parseInt(imageInSprite % playingSprite.column) * this.metadata.ImageSize);
-        row = parseInt(-1 * parseInt(imageInSprite / playingSprite.rows) * this.metadata.ImageSize);
-        if (!this.playOrder[this.imageIndex]) {
-          this.playOrder[this.imageIndex] = {
-            spriteNumber: this.currentSprite,
-            col: col,
-            row: row
-          };
-        }
-        imgInfo = this.playOrder[this.imageIndex];
-        if (this.imageType === '.png') {
-          this.ctx.clearRect(0, 0, this.metadata.ImageSize, this.metadata.ImageSize);
-        }
-        return this.ctx.drawImage(this.sprites[imgInfo.spriteNumber].image, imgInfo.col, imgInfo.row);
-      }
-    };
-
     LightSprite.prototype.loadParts = function(gap, defer) {
       var downloadImages, index, _t;
       gap = gap || 0;
@@ -386,14 +343,53 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:
     };
 
     LightSprite.prototype.nextImage = function() {
-      var indexer;
-      indexer = Object.getOwnPropertyNames(downloadImagesArr).map(function(v) {
-        return parseInt(v);
-      });
-      if (indexer.length > 1) {
-        this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-        this.ctx.drawImage(downloadImagesArr[indexer[counter]], 0, 0);
-        return counter = (counter + 1) % indexer.length;
+      var col, imageInSprite, imgInfo, indexer, playingSprite, row;
+      if (!this.isSprite) {
+        indexer = Object.getOwnPropertyNames(downloadImagesArr).map(function(v) {
+          return parseInt(v);
+        });
+        if (indexer.length > 1) {
+          this.ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
+          this.ctx.drawImage(downloadImagesArr[indexer[counter]], 0, 0);
+          return counter = (counter + 1) % indexer.length;
+        }
+      } else {
+        this.delta = 1;
+        if (this.metadata && this.sprites.length > 0) {
+          if (this.imageIndex + this.delta !== this.metadata.TotalImageCount) {
+            this.imageIndex += this.delta;
+          } else {
+            if (this.oneSprite) {
+              this.imageIndex = 0;
+            } else {
+              this.imageIndex += this.delta;
+            }
+          }
+          playingSprite = this.sprites[this.currentSprite];
+          if ((this.imageIndex - this.imagegap) % playingSprite.totalImage === 0 && this.imageIndex > 0) {
+            if (this.sprites.length - 1 === this.currentSprite) {
+              playingSprite = this.sprites[--this.currentSprite];
+            } else {
+              playingSprite = this.sprites[++this.currentSprite];
+            }
+            this.imagegap = this.imageIndex;
+          }
+          imageInSprite = this.imageIndex - this.imagegap;
+          col = parseInt(-1 * parseInt(imageInSprite % playingSprite.column) * this.metadata.ImageSize);
+          row = parseInt(-1 * parseInt(imageInSprite / playingSprite.rows) * this.metadata.ImageSize);
+          if (!this.playOrder[this.imageIndex]) {
+            this.playOrder[this.imageIndex] = {
+              spriteNumber: this.currentSprite,
+              col: col,
+              row: row
+            };
+          }
+          imgInfo = this.playOrder[this.imageIndex];
+          if (this.imageType === '.png') {
+            this.ctx.clearRect(0, 0, this.metadata.ImageSize, this.metadata.ImageSize);
+          }
+          return this.ctx.drawImage(this.sprites[imgInfo.spriteNumber].image, imgInfo.col, imgInfo.row);
+        }
       }
     };
 
