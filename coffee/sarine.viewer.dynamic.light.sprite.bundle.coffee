@@ -1,5 +1,5 @@
 ###!
-sarine.viewer.dynamic.light.sprite - v0.1.0 -  Thursday, August 4th, 2016, 4:49:32 PM 
+sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33 PM 
  The source code, name, and look and feel of the software are Copyright © 2015 Sarine Technologies Ltd. All Rights Reserved. You may not duplicate, copy, reuse, sell or otherwise exploit any portion of the code, content or visual design elements without express written permission from Sarine Technologies Ltd. The terms and conditions of the sarine.com website (http://sarine.com/terms-and-conditions/) apply to the access and use of this software.
 ###
 
@@ -61,7 +61,7 @@ class Viewer.Dynamic extends Viewer
 
 
 class LightSprite extends Viewer.Dynamic 
-	isSprite = false
+	
 	amountOfImages = 48 
 	imageIndex = 0	
 	allDeferreds = {} 
@@ -75,6 +75,8 @@ class LightSprite extends Viewer.Dynamic
 	constructor: (options) ->
 		super(options)						
 		{@sliceDownload,@jsonFileName,@firstImagePath,@spritesPath,@oneSprite,@imageType} = options
+		@isSprite = false
+
 		#sprite properties
 		@imageType = @imageType || '.png' 
 		@metadata = undefined
@@ -125,21 +127,21 @@ class LightSprite extends Viewer.Dynamic
 			if(_t.playing)
 				_t.play()
 		.then ()->
-			isSprite = true
+			_t.isSprite = true
 			_t.first_init_sprite()	
 		.fail =>			
-			isSprite = false
+			_t.isSprite = false
 			_t.first_init_images()
 		defer	
 
 	full_init : ()->
-		if isSprite then @full_init_sprite() else @full_init_images()
+		if @isSprite then @full_init_sprite() else @full_init_images()
 
 	first_init_images : ()->
 		defer = @first_init_defer
 		defer.notify(@id + " : start load first image")
 		_t = @
-		@loadImage(@src + "00.png").then((img)->
+		@loadImage(@src + @firstImagePath).then((img)->
 			if img.src.indexOf('data:image') != -1 || img.src.indexOf('no_stone') != -1
 				_t.isAvailble = false
 				_t.canvas.attr {'class' : 'no_stone'}
@@ -183,41 +185,6 @@ class LightSprite extends Viewer.Dynamic
 				_t.downloadSprite(mainDefer)
 			true
 	
-	nextImage : ()->
-		if(@metadata && @sprites.length > 0)
-			if (@imageIndex + @delta == @metadata.TotalImageCount || @imageIndex + @delta == @imagesDownload)
-				@delta = -1
-			if (@imageIndex + @delta == -1)
-				@delta = 1
-			
-			@imageIndex += @delta
-			playingSprite = @sprites[@currentSprite]
-			if (@imageIndex - @imagegap)  %  playingSprite.totalImage == 0 && @imageIndex > 0
-				if @delta == 1
-					playingSprite = @sprites[++@currentSprite]
-				else if @delta == -1
-					playingSprite = @sprites[--@currentSprite]
-				@imagegap = @imageIndex
-
-			# fix light 1 sprite issue
-			if !@backOnEnd && @sprites.length == 1 
-				totalLessOne = @sprites[@currentSprite].totalImage - 1
-				imageInSprite = @imageIndex - @imagegap + if @delta == -1 then totalLessOne else 0
-			else
-				imageInSprite = @imageIndex - @imagegap + if @delta == -1 then @sprites[@currentSprite].totalImage else 0
-			col =  parseInt(-1 * parseInt(imageInSprite % playingSprite.column) * @metadata.ImageSize)
-			row = parseInt(-1 * parseInt(imageInSprite / playingSprite.rows) * @metadata.ImageSize)
-			if !@playOrder[@imageIndex]
-				@playOrder[@imageIndex] = {
-					spriteNumber : @currentSprite
-					col : col
-					row : row
-				}
-			imgInfo = @playOrder[@imageIndex]
-			if @imageType == '.png'
-				@ctx.clearRect(0,0,@metadata.ImageSize,@metadata.ImageSize);
-			@ctx.drawImage(@sprites[imgInfo.spriteNumber].image, imgInfo.col  ,imgInfo.row)
-
 	loadParts : (gap,defer)->
 		gap = gap || 0
 		defer = defer || $.Deferred()
@@ -240,11 +207,43 @@ class LightSprite extends Viewer.Dynamic
 		return defer
 
 	nextImage : ()->
-		indexer = Object.getOwnPropertyNames(downloadImagesArr).map((v)-> parseInt(v)) 
-		if indexer.length > 1
-			@ctx.clearRect 0, 0, @ctx.canvas.width, @ctx.canvas.height
-			@ctx.drawImage downloadImagesArr[indexer[counter]] , 0 , 0			
-			counter = (counter + 1) % indexer.length
+		if !@isSprite 
+			indexer = Object.getOwnPropertyNames(downloadImagesArr).map((v)-> parseInt(v)) 
+			if indexer.length > 1
+				@ctx.clearRect 0, 0, @ctx.canvas.width, @ctx.canvas.height
+				@ctx.drawImage downloadImagesArr[indexer[counter]] , 0 , 0			
+				counter = (counter + 1) % indexer.length
+		else
+			@delta = 1
+			if(@metadata && @sprites.length > 0)
+				if (@imageIndex + @delta != @metadata.TotalImageCount)
+					@imageIndex += @delta
+				else
+					if(@oneSprite)
+						@imageIndex = 0
+					else
+						@imageIndex += @delta 
+				playingSprite = @sprites[@currentSprite]
+				if (@imageIndex - @imagegap)  %  playingSprite.totalImage == 0 && @imageIndex > 0
+					if @sprites.length - 1 == @currentSprite
+						playingSprite = @sprites[--@currentSprite]	
+					else
+						playingSprite = @sprites[++@currentSprite]
+					@imagegap = @imageIndex
+
+				imageInSprite = @imageIndex - @imagegap
+				col =  parseInt(-1 * parseInt(imageInSprite % playingSprite.column) * @metadata.ImageSize)
+				row = parseInt(-1 * parseInt(imageInSprite / playingSprite.rows) * @metadata.ImageSize)
+				if !@playOrder[@imageIndex]
+					@playOrder[@imageIndex] = {
+						spriteNumber : @currentSprite
+						col : col
+						row : row
+					}
+				imgInfo = @playOrder[@imageIndex]
+				if @imageType == '.png'
+					@ctx.clearRect(0,0,@metadata.ImageSize,@metadata.ImageSize);
+				@ctx.drawImage(@sprites[imgInfo.spriteNumber].image, imgInfo.col  ,imgInfo.row)
 
 @LightSprite = LightSprite
 
