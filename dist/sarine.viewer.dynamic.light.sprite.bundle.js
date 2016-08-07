@@ -1,6 +1,6 @@
 
 /*!
-sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33 PM 
+sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 3:56:19 PM 
  The source code, name, and look and feel of the software are Copyright © 2015 Sarine Technologies Ltd. All Rights Reserved. You may not duplicate, copy, reuse, sell or otherwise exploit any portion of the code, content or visual design elements without express written permission from Sarine Technologies Ltd. The terms and conditions of the sarine.com website (http://sarine.com/terms-and-conditions/) apply to the access and use of this software.
  */
 
@@ -180,6 +180,27 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33
       var defer, _t;
       defer = this.first_init_defer;
       _t = this;
+      this.loadImage(this.src + this.firstImagePath).then(function(img) {
+        if (img.src.indexOf('data:image') !== -1 || img.src.indexOf('no_stone') !== -1) {
+          _t.isAvailble = false;
+          _t.canvas.attr({
+            'class': 'no_stone'
+          });
+        }
+        _t.canvas.attr({
+          'width': img.width,
+          'height': img.height
+        });
+        _t.ctx.drawImage(img, 0, 0);
+        return defer.resolve(_t);
+      });
+      return defer;
+    };
+
+    LightSprite.prototype.full_init = function() {
+      var defer, _t;
+      defer = this.full_init_defer;
+      _t = this;
       $.getJSON(this.src + this.jsonFileName, function(data) {
         if (!data.FPS) {
           data.FPS = 15;
@@ -198,79 +219,22 @@ sarine.viewer.dynamic.light.sprite - v0.1.0 -  Sunday, August 7th, 2016, 1:29:33
         }
       }).then(function() {
         _t.isSprite = true;
-        return _t.first_init_sprite();
+        return _t.downloadSprite(defer).then(function() {
+          if (_t.autoPlay) {
+            _t.play(true);
+          }
+          return true;
+        });
       }).fail((function(_this) {
         return function() {
           _t.isSprite = false;
-          return _t.first_init_images();
+          if (_t.isAvailble) {
+            return _t.loadParts().then(defer.resolve);
+          } else {
+            return defer.resolve;
+          }
         };
       })(this));
-      return defer;
-    };
-
-    LightSprite.prototype.full_init = function() {
-      if (this.isSprite) {
-        return this.full_init_sprite();
-      } else {
-        return this.full_init_images();
-      }
-    };
-
-    LightSprite.prototype.first_init_images = function() {
-      var defer, _t;
-      defer = this.first_init_defer;
-      defer.notify(this.id + " : start load first image");
-      _t = this;
-      this.loadImage(this.src + this.firstImagePath).then(function(img) {
-        if (img.src.indexOf('data:image') !== -1 || img.src.indexOf('no_stone') !== -1) {
-          _t.isAvailble = false;
-          _t.canvas.attr({
-            'class': 'no_stone'
-          });
-        }
-        _t.canvas.attr({
-          'width': img.width,
-          'height': img.height
-        });
-        _t.ctx.drawImage(img, 0, 0);
-        return defer.resolve(_t);
-      });
-      return defer;
-    };
-
-    LightSprite.prototype.first_init_sprite = function() {
-      var defer, _t;
-      defer = this.first_init_defer;
-      _t = this;
-      _t.loadImage(_t.src + _t.firstImagePath).then(function(img) {
-        _t.ctx.drawImage(img, 0, 0, _t.metadata.ImageSize, _t.metadata.ImageSize);
-        _t.imageIndex = 0;
-        return defer.resolve(_t);
-      });
-      return defer;
-    };
-
-    LightSprite.prototype.full_init_images = function() {
-      var defer;
-      defer = this.full_init_defer;
-      if (this.isAvailble) {
-        this.loadParts().then(defer.resolve);
-      } else {
-        defer.resolve;
-      }
-      return defer;
-    };
-
-    LightSprite.prototype.full_init_sprite = function() {
-      var defer, _t;
-      defer = this.full_init_defer;
-      _t = this;
-      this.downloadSprite(defer).then(function() {
-        if (_t.autoPlay) {
-          _t.play(true);
-        }
-        return true;
-      });
       return defer;
     };
 
