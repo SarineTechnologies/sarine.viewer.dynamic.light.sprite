@@ -8,7 +8,7 @@
     "package.json",
     "Gruntfile.js"
   ],
-  "dependencies": {
+  "resolutions": {
     "sarine.viewer": "https://github.com/SarineTechnologies/sarine.viewer.git#v0.3.0",
     "sarine.viewer.dynamic": "https://github.com/SarineTechnologies/sarine.viewer.dynamic.git#v0.2.0"
   },
